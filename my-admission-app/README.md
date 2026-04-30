@@ -1,16 +1,40 @@
-# React + Vite
+🇩🇰 READ ME: Getting Started (Quick Start)
+Hey guys! Here is the step-by-step to get the project running on your computer. Follow this exactly and you’ll be ready to code in 5 minutes.
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+1. Download Docker Desktop
+Docker is the "engine" that runs our app.
 
-Currently, two official plugins are available:
+Download Docker Desktop
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Run it: open up docker thengo to the root folder in this case "my-admission-app" then run this command docker compose up --build in the terminal
 
-## React Compiler
+2. Launch the Project
+Open the project folder in VS Code, open a Terminal, and type this one command:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Bash
+docker compose up
+Wait a minute for it to load. Once the text stops scrolling, the site is "live" on your machine.
 
-## Expanding the ESLint configuration
+3. Where to see your work
+Our project is split into two halves. Open your browser and go to these links:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+FRONTEND (Designers/UI): http://localhost:5173
+
+Go here to see the buttons, colors, and layout.
+
+BACKEND (Data/AI): http://localhost:8000/docs
+
+Go here to see the data and the "brain" of the app.
+
+4. How to see your changes
+You don't need to restart anything to see your work.
+
+If you're Frontend: Edit files in the /frontend/src folder. The moment you Save (Cmd+S / Ctrl+S), your changes will show up instantly at the link above.
+
+If you're Backend: Edit files in the /backend folder. When you Save, the "brain" updates itself automatically.
+
+5. To Stop the Site
+If you want to turn it off, just go to your terminal in VS Code and press:
+Ctrl + C
+
+Common Fix: If you see an error saying "executable not found," just run docker compose up --build instead. It fixes 99% of problems.
