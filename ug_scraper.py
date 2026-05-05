@@ -1,8 +1,8 @@
 """
-UG.dk Education Scraper v10
+UG.dk Education Scraper v11
 ============================
 Fetches all education URLs from sitemap.xml.
-Correctly extracts GPA, description, institutions.
+Extracts GPA per institution, descriptions, and local requirements.
 
 RUN:
     python ug_scraper.py
@@ -30,6 +30,47 @@ def get_all_education_urls():
     ]
     print(f"Found {len(urls)} education URLs in sitemap")
     return urls
+
+
+def extract_local_requirements(soup):
+    """Extract local grade requirements per institution."""
+    local_reqs = {}
+
+    adgang = soup.find(id="adgangskrav")
+    if not adgang:
+        return local_reqs
+
+    local_heading = adgang.find(string=lambda t: t and "lokale adgangskrav" in t.lower())
+    if not local_heading:
+        return local_reqs
+
+    skip_phrases = [
+        "gælder kun for", "læs mere", "om gymnasiale",
+        "om adgangskrav", "om gsk", "suppleringskurser"
+    ]
+
+    current_uni = ""
+    for el in local_heading.find_parent().find_next_siblings():
+        if el.name == "p":
+            text = el.get_text(strip=True)
+            if not text:
+                continue
+            if any(phrase in text.lower() for phrase in skip_phrases):
+                continue
+            if len(text) < 60:
+                current_uni = text
+                local_reqs[current_uni] = []
+        elif el.name in ["ul", "ol"] and current_uni:
+            for li in el.find_all("li"):
+                req = li.get_text(strip=True)
+                if not req:
+                    continue
+                if any(phrase in req.lower() for phrase in skip_phrases):
+                    continue
+                if req not in local_reqs[current_uni]:
+                    local_reqs[current_uni].append(req)
+
+    return local_reqs
 
 
 def scrape_education_page(url):
@@ -89,7 +130,15 @@ def scrape_education_page(url):
     # -- Language --
     language = "Danish/English" if "english" in page_text.lower() else "Danish"
 
-# -- GPA per institution --
+    # -- Description --
+    description = ""
+    for selector in [".ug-subheading", ".ug-lead", ".field--name-field-uddannelse-manchet", "p.manchet"]:
+        el = soup.select_one(selector)
+        if el:
+            description = el.get_text(strip=True)[:400]
+            break
+
+    # -- GPA per institution --
     gpa_by_institution = []
     gpa_note = ""
 
@@ -99,11 +148,8 @@ def scrape_education_page(url):
         any_gpa_found = False
 
         for row in gpa_section.find_all("tr"):
-            # University name row
             if "sub-header" in (row.get("class") or []):
                 current_university = row.get_text(strip=True)
-
-            # Data row
             elif "ug-row" in (row.get("class") or []):
                 cells = row.find_all("td")
                 if len(cells) >= 3:
@@ -111,7 +157,6 @@ def scrape_education_page(url):
                     gpa_text = cells[2].get_text(strip=True)
                     standby_text = cells[3].get_text(strip=True) if len(cells) >= 4 else ""
 
-                    # Parse GPA — AO means "Alle Optaget" (everyone accepted)
                     gpa_val = None
                     if gpa_text == "AO":
                         gpa_val = "AO"
@@ -124,7 +169,6 @@ def scrape_education_page(url):
                         except Exception:
                             pass
 
-                    # Parse standby
                     standby_val = None
                     if standby_text == "AO":
                         standby_val = "AO"
@@ -162,6 +206,9 @@ def scrape_education_page(url):
         if entry not in mandatory_subjects:
             mandatory_subjects.append(entry)
 
+    # -- Local requirements per institution --
+    local_requirements = extract_local_requirements(soup)
+
     # -- Quota 2 admission type --
     admission_parts = []
     if "unitest" in page_text.lower():
@@ -183,14 +230,6 @@ def scrape_education_page(url):
         if keyword in page_text.lower():
             booster_activities.append(label)
 
-    # -- Description --
-    description = ""
-    for selector in [".ug-subheading", ".ug-lead", ".field--name-field-uddannelse-manchet", "p.manchet"]:
-        el = soup.select_one(selector)
-        if el:
-            description = el.get_text(strip=True)[:400]
-            break
-
     url_slug = url.rstrip("/").split("/")[-1].upper().replace("-", "_")
 
     return {
@@ -209,6 +248,7 @@ def scrape_education_page(url):
             "gpa_by_institution": gpa_by_institution,
             "gpa_note": gpa_note,
             "mandatory_subjects": mandatory_subjects,
+            "local_requirements": local_requirements,
             "min_grade_requirements": ""
         },
         "quota_2_logic": {
@@ -226,7 +266,7 @@ def scrape_education_page(url):
 
 
 def main():
-    print("UG.dk Scraper v10 starting...")
+    print("UG.dk Scraper v11 starting...")
     print("=" * 50)
 
     all_educations = []
