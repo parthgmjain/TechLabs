@@ -1,138 +1,307 @@
 """
-AI Enrichment Script
-=====================
-Loops through ug_educations.json and calls the Claude API
-to fill in fields that cannot be scraped.
-
-REQUIRES:
-    pip install anthropic
+UG.dk Education Scraper v11
+============================
+Fetches all education URLs from sitemap.xml.
+Extracts GPA per institution, descriptions, and local requirements.
 
 RUN:
-    export ANTHROPIC_API_KEY="your-key-here"
-    python ai_enrichment.py
+    python ug_scraper.py
 """
 
+import requests
 import json
 import time
+import re
 import os
-import anthropic
+from bs4 import BeautifulSoup
 
-INPUT_FILE = "ug_educations.json"
-OUTPUT_FILE = "ug_educations_enriched.json"
-DELAY_SECONDS = 1.0
+OUTPUT_FILE = "ug_educations.json"
+DELAY_SECONDS = 0.5
 
 
-def enrich_education(client, education):
-    meta = education.get("metadata", {})
-    degree_name = meta.get("degree_name", "")
-    degree_type = meta.get("degree_type", "")
-    description = meta.get("description", "")
-    institutions = meta.get("institutions", [])
-    duration = meta.get("duration", "")
+def get_all_education_urls():
+    print("Fetching all education URLs from sitemap.xml...")
+    r = requests.get("https://www.ug.dk/sitemap.xml", headers={"User-Agent": "Mozilla/5.0"})
+    soup = BeautifulSoup(r.text, "xml")
+    urls = [
+        loc.text for loc in soup.find_all("loc")
+        if "/videregaaende-uddannelser/" in loc.text
+        and loc.text.count("/") >= 5
+    ]
+    print(f"Found {len(urls)} education URLs in sitemap")
+    return urls
 
-    gatekeeper = education.get("eligibility_gatekeeper", {})
-    subjects = gatekeeper.get("mandatory_subjects", [])
 
-    quota2 = education.get("quota_2_logic", {})
-    booster = quota2.get("booster_activities", [])
+def extract_local_requirements(soup):
+    """Extract local grade requirements per institution."""
+    local_reqs = {}
 
-    prompt = f"""You are a Danish higher education expert. Analyze this education and return ONLY a JSON object.
+    adgang = soup.find(id="adgangskrav")
+    if not adgang:
+        return local_reqs
 
-EDUCATION:
-Name: {degree_name}
-Type: {degree_type}
-Duration: {duration}
-Institutions: {', '.join([i.get('university', '') for i in institutions])}
-Description: {description}
-Mandatory subjects: {', '.join([f"{s['subject']} {s['level']}" for s in subjects])}
-Booster activities: {', '.join(booster)}
+    local_heading = adgang.find(string=lambda t: t and "lokale adgangskrav" in t.lower())
+    if not local_heading:
+        return local_reqs
 
-Return ONLY this JSON with no explanation or markdown:
-{{
-  "pedagogy_style": "PPL (Project-based)" OR "Classical Lectures" OR "Case-based" OR "Blended",
-  "vibe_summary": "3 sentences about the culture, workload, and social atmosphere. Focus on unique selling points.",
-  "curriculum_keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
-  "career_outcomes": ["job1", "job2", "job3"],
-  "gap_year_impact_score": "High" OR "Medium" OR "Low"
-}}"""
+    skip_phrases = [
+        "gælder kun for", "læs mere", "om gymnasiale",
+        "om adgangskrav", "om gsk", "suppleringskurser"
+    ]
 
+    current_uni = ""
+    for el in local_heading.find_parent().find_next_siblings():
+        if el.name == "p":
+            text = el.get_text(strip=True)
+            if not text:
+                continue
+            if any(phrase in text.lower() for phrase in skip_phrases):
+                continue
+            if len(text) < 60:
+                current_uni = text
+                local_reqs[current_uni] = []
+        elif el.name in ["ul", "ol"] and current_uni:
+            for li in el.find_all("li"):
+                req = li.get_text(strip=True)
+                if not req:
+                    continue
+                if any(phrase in req.lower() for phrase in skip_phrases):
+                    continue
+                if req not in local_reqs[current_uni]:
+                    local_reqs[current_uni].append(req)
+
+    return local_reqs
+
+
+def scrape_education_page(url):
     try:
-        message = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=1000,
-            messages=[{"role": "user", "content": prompt}]
+        response = requests.get(
+            url,
+            headers={"User-Agent": "Mozilla/5.0", "Accept-Language": "da-DK"},
+            timeout=15
         )
-
-        response_text = message.content[0].text.strip()
-
-        if response_text.startswith("```"):
-            response_text = response_text.split("```")[1]
-            if response_text.startswith("json"):
-                response_text = response_text[4:]
-
-        return json.loads(response_text)
-
-    except json.JSONDecodeError as e:
-        print(f"   JSON parse error: {e}")
-        return None
+        response.raise_for_status()
     except Exception as e:
-        print(f"   API error: {e}")
+        print(f"   Skipping — {e}")
         return None
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    page_text = soup.get_text()
+
+    # -- Degree name --
+    h1 = soup.find("h1")
+    degree_name = h1.get_text(strip=True) if h1 else ""
+
+    # -- Degree type from URL --
+    url_parts = url.rstrip("/").split("/")
+    degree_type = url_parts[-2].replace("-", " ").title() if len(url_parts) >= 2 else ""
+
+    # -- Fact box: duration, cities --
+    duration = ""
+    cities = []
+    fact_box = soup.find(class_="ug-fact-box")
+    if fact_box:
+        lines = [l.strip() for l in fact_box.get_text(separator="\n").split("\n") if l.strip()]
+        for i, line in enumerate(lines):
+            if "varighed" in line.lower() and i + 1 < len(lines):
+                duration = lines[i + 1]
+            elif "kan læses i" in line.lower():
+                j = i + 1
+                while j < len(lines) and not any(
+                    kw in lines[j].lower() for kw in ["andre navne", "varighed", "fakta"]
+                ):
+                    cities.append(lines[j])
+                    j += 1
+
+    # -- Institutions --
+    institutions = []
+    for row in soup.find_all(class_="institution-row"):
+        lines = [l.strip() for l in row.get_text(separator="\n").split("\n") if l.strip()]
+        if lines:
+            name = lines[0]
+            city = ""
+            for line in lines[1:4]:
+                if line and len(line) < 25 and not any(c.isdigit() for c in line):
+                    city = line
+                    break
+            if name and len(name) > 3 and {"university": name, "city": city} not in institutions:
+                institutions.append({"university": name, "city": city})
+
+    # -- Language --
+    language = "Danish/English" if "english" in page_text.lower() else "Danish"
+
+    # -- Description --
+    description = ""
+    for selector in [".ug-subheading", ".ug-lead", ".field--name-field-uddannelse-manchet", "p.manchet"]:
+        el = soup.select_one(selector)
+        if el:
+            description = el.get_text(strip=True)[:400]
+            break
+
+    # -- GPA per institution --
+    gpa_by_institution = []
+    gpa_note = ""
+
+    gpa_section = soup.find(id="adgangskvotienter")
+    if gpa_section:
+        current_university = ""
+        any_gpa_found = False
+
+        for row in gpa_section.find_all("tr"):
+            if "sub-header" in (row.get("class") or []):
+                current_university = row.get_text(strip=True)
+            elif "ug-row" in (row.get("class") or []):
+                cells = row.find_all("td")
+                if len(cells) >= 3:
+                    city = cells[0].get_text(strip=True)
+                    gpa_text = cells[2].get_text(strip=True)
+                    standby_text = cells[3].get_text(strip=True) if len(cells) >= 4 else ""
+
+                    gpa_val = None
+                    if gpa_text == "AO":
+                        gpa_val = "AO"
+                    else:
+                        try:
+                            val = float(gpa_text.replace(",", "."))
+                            if 2.0 <= val <= 12.0:
+                                gpa_val = val
+                                any_gpa_found = True
+                        except Exception:
+                            pass
+
+                    standby_val = None
+                    if standby_text == "AO":
+                        standby_val = "AO"
+                    else:
+                        try:
+                            val = float(standby_text.replace(",", "."))
+                            if 2.0 <= val <= 12.0:
+                                standby_val = val
+                        except Exception:
+                            pass
+
+                    if gpa_val is not None:
+                        gpa_by_institution.append({
+                            "university": current_university,
+                            "city": city,
+                            "quota_1_gpa_2025": gpa_val,
+                            "standby_gpa": standby_val
+                        })
+
+        if not any_gpa_found and not gpa_by_institution:
+            section_text = gpa_section.get_text(strip=True)
+            if "uden for kvotesystemet" in section_text.lower():
+                gpa_note = "Outside quota system"
+            else:
+                gpa_note = "Not available"
+
+    # -- Mandatory subjects --
+    mandatory_subjects = []
+    for subject, level in re.compile(
+        r'(matematik|dansk|engelsk|fysik|kemi|biologi|historie|'
+        r'samfundsfag|informatik|musik|idræt|psykologi|geografi)\s*([ABC])',
+        re.IGNORECASE
+    ).findall(page_text):
+        entry = {"subject": subject.capitalize(), "level": level.upper()}
+        if entry not in mandatory_subjects:
+            mandatory_subjects.append(entry)
+
+    # -- Local requirements per institution --
+    local_requirements = extract_local_requirements(soup)
+
+    # -- Quota 2 admission type --
+    admission_parts = []
+    if "unitest" in page_text.lower():
+        admission_parts.append("uniTEST")
+    if "motiveret" in page_text.lower():
+        admission_parts.append("Motivated Essay")
+    if "portfolio" in page_text.lower():
+        admission_parts.append("Portfolio")
+
+    # -- Booster activities --
+    booster_activities = []
+    for keyword, label in [
+        ("relevant erhvervserfaring", "Relevant work experience"),
+        ("frivilligt arbejde", "Voluntary work"),
+        ("udlandsophold", "International stay / Gap year"),
+        ("højskoleophold", "Folk High School (Højskole)"),
+        ("praktik", "Internship"),
+    ]:
+        if keyword in page_text.lower():
+            booster_activities.append(label)
+
+    url_slug = url.rstrip("/").split("/")[-1].upper().replace("-", "_")
+
+    return {
+        "id": f"UNI-{url_slug}",
+        "source_url": url,
+        "metadata": {
+            "degree_name": degree_name,
+            "degree_type": degree_type,
+            "duration": duration,
+            "language": language,
+            "description": description,
+            "institutions": institutions,
+            "cities": cities,
+        },
+        "eligibility_gatekeeper": {
+            "gpa_by_institution": gpa_by_institution,
+            "gpa_note": gpa_note,
+            "mandatory_subjects": mandatory_subjects,
+            "local_requirements": local_requirements,
+            "min_grade_requirements": ""
+        },
+        "quota_2_logic": {
+            "admission_type": " / ".join(admission_parts),
+            "booster_activities": booster_activities,
+            "gap_year_impact_score": ""
+        },
+        "ai_semantic_data": {
+            "pedagogy_style": "",
+            "vibe_summary": "TODO: Fill with AI",
+            "curriculum_keywords": [],
+            "career_outcomes": []
+        }
+    }
 
 
 def main():
-    print("AI Enrichment Script starting...")
+    print("UG.dk Scraper v11 starting...")
     print("=" * 50)
 
-    if not os.path.exists(INPUT_FILE):
-        print(f"File {INPUT_FILE} not found! Run ug_scraper.py first.")
-        return
-
-    with open(INPUT_FILE, "r", encoding="utf-8") as f:
-        educations = json.load(f)
-
-    print(f"Loaded {len(educations)} educations from {INPUT_FILE}")
-
-    enriched = []
-    enriched_ids = set()
+    all_educations = []
+    scraped_urls = set()
 
     if os.path.exists(OUTPUT_FILE):
         with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
-            enriched = json.load(f)
-            enriched_ids = {e["id"] for e in enriched}
-        print(f"Resuming — {len(enriched)} already enriched")
+            all_educations = json.load(f)
+            scraped_urls = {edu["source_url"] for edu in all_educations}
+        print(f"Resuming — already have {len(all_educations)} educations")
 
-    client = anthropic.Anthropic()
+    education_urls = get_all_education_urls()
+
+    if not education_urls:
+        print("No URLs found")
+        return
 
     new_count = 0
-    for i, education in enumerate(educations):
-        edu_id = education.get("id", "")
-
-        if edu_id in enriched_ids:
+    for i, url in enumerate(education_urls):
+        if url in scraped_urls:
             continue
-
-        degree_name = education.get("metadata", {}).get("degree_name", "?")
-        print(f"[{i+1}/{len(educations)}] {degree_name}")
-
-        ai_data = enrich_education(client, education)
-
-        if ai_data:
-            education["ai_semantic_data"] = ai_data
-            print(f"   {ai_data.get('pedagogy_style', '')} | {', '.join(ai_data.get('career_outcomes', [])[:2])}")
-        
-        enriched.append(education)
-        enriched_ids.add(edu_id)
-        new_count += 1
-
-        if new_count % 10 == 0:
-            save_results(enriched)
-            print(f"   Saved {len(enriched)} educations")
-
+        print(f"[{i+1}/{len(education_urls)}] {url.split('/')[-1]}")
+        education = scrape_education_page(url)
+        if education:
+            all_educations.append(education)
+            scraped_urls.add(url)
+            new_count += 1
+            if new_count % 10 == 0:
+                save_results(all_educations)
+                print(f"   Saved {len(all_educations)} educations")
         time.sleep(DELAY_SECONDS)
 
-    save_results(enriched)
+    save_results(all_educations)
     print("\n" + "=" * 50)
-    print(f"Done! {len(enriched)} educations saved to {OUTPUT_FILE}")
+    print(f"Done! {len(all_educations)} educations saved to {OUTPUT_FILE}")
 
 
 def save_results(data):
@@ -142,4 +311,3 @@ def save_results(data):
 
 if __name__ == "__main__":
     main()
-    
