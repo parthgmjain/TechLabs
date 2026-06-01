@@ -32,3 +32,7 @@ dist/
 
 # Data
 .DS_Store
+
+Plaintext
+# AI Model Cache
+backend/ai_engine/model_cache/
