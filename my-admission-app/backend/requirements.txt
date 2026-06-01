@@ -1,2 +1,6 @@
 fastapi
 uvicorn
+faiss-cpu
+sentence-transformers==2.5.1
+networkx==3.2.1
+numpy

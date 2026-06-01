@@ -1,0 +1,54 @@
+{
+  "student_profiles": [
+    {
+      "student_id": "STU-001",
+      "interests": "I want a high paying tech job building software, focusing heavily on automation and predictive artificial intelligence modeling.",
+      "accepted_or_saved_programs": ["UNI-ML-DATA-KU"]
+    },
+    {
+      "student_id": "STU-002",
+      "interests": "I want to study corporate scaling, financial analysis, and starting global businesses or marketing campaigns.",
+      "accepted_or_saved_programs": ["UNI-BUS-MARKETING-CBS"]
+    },
+    {
+      "student_id": "STU-003",
+      "interests": "I am deeply passionate about computers, coding, and algorithms, but I am definitely planning on taking a gap year travel before I start my studies.",
+      "accepted_or_saved_programs": ["UNI-ML-DATA-KU"]
+    },
+    {
+      "student_id": "STU-004",
+      "interests": "I need a university with a huge social scene, parties, and vibrant student life. I want to study business or management.",
+      "accepted_or_saved_programs": ["UNI-BUS-MARKETING-CBS"]
+    },
+    {
+      "student_id": "STU-005",
+      "interests": "I'm looking for a technical software degree, but campus sports culture is everything to me. I need elite training facilities and gym access.",
+      "accepted_or_saved_programs": ["UNI-ML-DATA-KU"]
+    },
+    {
+      "student_id": "STU-006",
+      "interests": "I plan to work full-time while studying, so I need a corporate program that offers flexible schedules or evening networking.",
+      "accepted_or_saved_programs": ["UNI-BUS-MARKETING-CBS"]
+    },
+    {
+      "student_id": "STU-007",
+      "interests": "Data engineering and heavy mathematical coding are what I want, but I have extreme social anxiety and prefer a quiet, low-key campus atmosphere.",
+      "accepted_or_saved_programs": ["UNI-ML-DATA-KU"]
+    },
+    {
+      "student_id": "STU-008",
+      "interests": "International trade, economics, and learning how to scale global operations. I also want to play competitive soccer at the university level.",
+      "accepted_or_saved_programs": ["UNI-BUS-MARKETING-CBS"]
+    },
+    {
+      "student_id": "STU-009",
+      "interests": "I want to learn programming frameworks and AI, but my main focus is finding a highly collaborative social environment with team projects.",
+      "accepted_or_saved_programs": ["UNI-ML-DATA-KU"]
+    },
+    {
+      "student_id": "STU-010",
+      "interests": "Pure startup strategy and venture capital fundraising. I want a fast-paced environment surrounded by highly ambitious business students.",
+      "accepted_or_saved_programs": ["UNI-BUS-MARKETING-CBS"]
+    }
+  ]
+}
