@@ -34,16 +34,36 @@ def startup_event():
     print("Both engines loaded.")
 
 class StudentProfileInput(BaseModel):
-    student_id: str
-    interests: str
-    accepted_or_saved_programs: List[str]
+    model_config = {"extra": "allow"}
+
+    # New schema fields
+    id: Optional[str] = None
+    name: Optional[str] = None
+    school: Optional[str] = None
+    year: Optional[str] = None
+    stage: Optional[str] = None
+    gpa: Optional[float] = None
+    interest_cluster: Optional[str] = None
+    interest_tags: Optional[str] = None
+    target_programme_1: Optional[str] = None
+    target_programme_2: Optional[str] = None
+    uncertainty_level: Optional[str] = None
+    motivation_quote: Optional[str] = None
+    what_you_want: Optional[str] = None
+    what_you_can_reach: Optional[float] = None
+    gap_to_target_pts: Optional[float] = None
+
+    # Old schema fields
+    student_id: Optional[str] = None
+    interests: Optional[str] = None
+    accepted_or_saved_programs: Optional[List[str]] = None
     preferred_sports: Optional[List[str]] = None
     lifestyle_notes: Optional[str] = None
 
 class QueryInput(BaseModel):
     query: str
     k: Optional[int] = 3
-    graph_weight: Optional[float] = 0.6  # tunable blend
+    graph_weight: Optional[float] = 0.6
 
 @app.get("/")
 def read_root():
@@ -60,24 +80,33 @@ def add_or_update_student_profile(profile: StudentProfileInput):
         with open(STUDENT_DATA_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
     except Exception:
-        data = {"student_profiles": []}
+        data = {"students": []}
 
-    profiles = data.get("student_profiles", [])
-    existing_index = next((i for i, p in enumerate(profiles) if p["student_id"] == profile.student_id), None)
+    students = data.get("students") or data.get("student_profiles", [])
+    root_key = "students" if "students" in data else "student_profiles"
+
     new_profile_dict = profile.dict(exclude_none=True)
 
-    if existing_index is not None:
-        profiles[existing_index] = new_profile_dict
-        message = f"Profile {profile.student_id} updated successfully."
-    else:
-        profiles.append(new_profile_dict)
-        message = f"Profile {profile.student_id} created and integrated into graph."
+    profile_id = profile.id or profile.student_id
+    if not profile_id:
+        raise HTTPException(status_code=400, detail="Either 'id' or 'student_id' is required.")
 
-    data["student_profiles"] = profiles
+    existing_index = next(
+        (i for i, p in enumerate(students) if p.get("id") == profile_id or p.get("student_id") == profile_id),
+        None
+    )
+
+    if existing_index is not None:
+        students[existing_index] = new_profile_dict
+        message = f"Profile {profile_id} updated successfully."
+    else:
+        students.append(new_profile_dict)
+        message = f"Profile {profile_id} created and integrated into graph."
+
+    data[root_key] = students
     with open(STUDENT_DATA_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
-    # Only graph engine needs reload — content engine is student-independent
     graph_engine.load_data_and_build_graph(STUDENT_DATA_PATH, UNI_DATA_PATH)
 
     return {"status": "success", "message": message}
