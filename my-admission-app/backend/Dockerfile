@@ -16,5 +16,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Run the test verification script directly inside the container
-CMD ["python", "test_engine.py"]
+# Start the FastAPI server
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

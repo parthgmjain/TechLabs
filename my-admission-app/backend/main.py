@@ -111,6 +111,34 @@ def add_or_update_student_profile(profile: StudentProfileInput):
 
     return {"status": "success", "message": message}
 
+@app.get("/api/students/{student_id}")
+def get_student_profile(student_id: str):
+    """Retrieve a student profile by ID (or email)."""
+    try:
+        with open(STUDENT_DATA_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        students = data.get("students") or data.get("student_profiles", [])
+        for student in students:
+            if student.get("id") == student_id or student.get("student_id") == student_id:
+                return student
+        raise HTTPException(status_code=404, detail="Student not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/students")
+def get_all_students(stage: Optional[str] = None):
+    """Return all student profiles, optionally filtered by stage/year."""
+    try:
+        with open(STUDENT_DATA_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        students = data.get("students") or data.get("student_profiles", [])
+        if stage:
+            students = [s for s in students if s.get("year", "").lower() == stage.lower()]
+        return students
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
 @app.post("/api/recommend")
 def get_recommendations(input_data: QueryInput):
     if not graph_engine or not content_engine:
@@ -138,3 +166,41 @@ def get_recommendations(input_data: QueryInput):
             for pid, score in top_k
         ]
     }
+
+@app.get("/api/programmes")
+def get_all_programmes():
+    """Return all university programmes from ug_educations.json"""
+    try:
+        with open(UNI_DATA_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        programmes = []
+        for prog in data:
+            # Extract the first institution's cutoff (quota 1 GPA)
+            cutoff = None
+            gpa_list = prog.get("eligibility_gatekeeper", {}).get("gpa_by_institution", [])
+            if gpa_list and isinstance(gpa_list, list):
+                first = gpa_list[0]
+                cutoff = first.get("quota_1_gpa_2025")
+                # Convert to float if it's a number, else keep as is (e.g., "AO")
+                if cutoff is not None and isinstance(cutoff, (int, float)):
+                    cutoff = float(cutoff)
+                elif isinstance(cutoff, str) and cutoff.replace('.', '', 1).isdigit():
+                    cutoff = float(cutoff)
+                else:
+                    cutoff = None  # "AO" or missing → show nothing
+
+            # University name from first institution
+            uni = ""
+            institutions = prog.get("metadata", {}).get("institutions", [])
+            if institutions:
+                uni = institutions[0].get("university", "")
+
+            programmes.append({
+                "id": prog.get("id"),
+                "name": prog.get("metadata", {}).get("degree_name", ""),
+                "uni": uni,
+                "cutoff": cutoff
+            })
+        return programmes
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

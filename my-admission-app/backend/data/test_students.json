@@ -5787,6 +5787,138 @@
       "what_you_want": "Health & medicine",
       "what_you_can_reach": 8.7,
       "gap_to_target_pts": -1.3
+    },
+    {
+      "id": "_1780916979804",
+      "name": "",
+      "school": "",
+      "year": "Year 1",
+      "interest_tags": "",
+      "target_programme_1": "It og økonomi (diplomingeniør)",
+      "motivation_quote": "fsd",
+      "what_you_want": ""
+    },
+    {
+      "id": "luis_1780920022549",
+      "name": "luis",
+      "school": "Copenhagen Business Gymnasium",
+      "year": "Year 1",
+      "gpa": 12.5,
+      "interest_tags": "People, Danish",
+      "target_programme_1": "Civilsamfunds­udvikling",
+      "motivation_quote": "i am thinking about the computer science",
+      "what_you_want": "People"
+    },
+    {
+      "id": "luis_1780931545835",
+      "name": "luis",
+      "school": "Frederiksberg Gymnasium",
+      "year": "Year 1",
+      "interest_tags": "People, English",
+      "target_programme_1": "Retorik",
+      "target_programme_2": "Audio­logopædi",
+      "motivation_quote": "self-learning\n",
+      "what_you_want": "People"
+    },
+    {
+      "id": "luis_1780939319811",
+      "name": "luis",
+      "school": "Kolding Gymnasium",
+      "year": "Year 1",
+      "gpa": 10.0,
+      "interest_tags": "People, English",
+      "target_programme_1": "Grafisk kommuni­kation",
+      "motivation_quote": "school activities",
+      "what_you_want": "People"
+    },
+    {
+      "id": "luis_1780939323276",
+      "name": "luis",
+      "school": "Kolding Gymnasium",
+      "year": "Year 1",
+      "gpa": 10.0,
+      "interest_tags": "People, English",
+      "target_programme_1": "Grafisk kommuni­kation",
+      "motivation_quote": "school activities",
+      "what_you_want": "People"
+    },
+    {
+      "id": "luis_1780939325512",
+      "name": "luis",
+      "school": "Kolding Gymnasium",
+      "year": "Year 1",
+      "gpa": 10.0,
+      "interest_tags": "People, English",
+      "target_programme_1": "Grafisk kommuni­kation",
+      "motivation_quote": "school activities",
+      "what_you_want": "People"
+    },
+    {
+      "id": "luis_1780941320318",
+      "name": "luis",
+      "school": "HTX Roskilde",
+      "year": "Year 1",
+      "interest_tags": "People, English",
+      "target_programme_1": "Visual Studies and Art Education",
+      "motivation_quote": "ghh",
+      "what_you_want": "People"
+    },
+    {
+      "id": "luis_1780941325646",
+      "name": "luis",
+      "school": "HTX Roskilde",
+      "year": "Year 1",
+      "interest_tags": "People, English",
+      "target_programme_1": "Visual Studies and Art Education",
+      "motivation_quote": "ghh",
+      "what_you_want": "People"
+    },
+    {
+      "id": "lin_1780948467048",
+      "name": "Lin",
+      "school": "Aalborg Studenterkursus",
+      "year": "Year 1",
+      "gpa": 10.5,
+      "interest_tags": "Culture, English",
+      "target_programme_1": "Elektronisk musik og lyd",
+      "motivation_quote": "ambition",
+      "what_you_want": "Culture"
+    },
+    {
+      "id": "luis_1780953895433",
+      "name": "luis",
+      "school": "Copenhagen Business Gymnasium",
+      "year": "Year 1",
+      "gpa": 10.0,
+      "interest_tags": "Culture, Art",
+      "target_programme_1": "It og økonomi (diplomingeniør)",
+      "target_programme_2": "Fysik og ingeniørvidenskab",
+      "motivation_quote": "i am tired now",
+      "what_you_want": "Culture"
+    },
+    {
+      "id": "lin_nora_1780958384146",
+      "name": "Lin Nora",
+      "school": "Aarhus Katedralskole",
+      "year": "Year 1",
+      "gpa": 9.0,
+      "interest_tags": "Culture",
+      "target_programme_1": "Business, Language and Culture (cand.negot.)",
+      "target_programme_2": "Culture, Communi­cation and Globalization",
+      "motivation_quote": "i love learning spanish language because it is very pleasant to speak and listen",
+      "what_you_want": "Culture"
+    },
+    {
+      "id": "marius_1780960707661",
+      "name": "Marius",
+      "school": "Copenhagen Business Gymnasium",
+      "year": "Year 1",
+      "gpa": 9.0,
+      "interest_tags": "Systems",
+      "target_programme_1": "Electronic Systems",
+      "target_programme_2": "Robot Systems",
+      "motivation_quote": "i am from denmark",
+      "what_you_want": "Systems"
     }
   ]
 }

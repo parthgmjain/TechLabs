@@ -1,122 +1,141 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+// src/App.jsx
+import { useState, useEffect } from 'react';
+import Landing from './components/Landing';
+import Onboarding from './components/Onboarding';
+import MainApp from './components/MainApp';
+import PrivacyPolicy from './components/PrivacyPolicy';
+import AboutUs from './components/AboutUs';
+import Copyright from './components/Copyright';
+// AuthModal is no longer used – we bypass login
+import { ProgrammesProvider } from './components/context/ProgrammesContext';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [currentView, setCurrentView] = useState('landing');
+  const [userData, setUserData] = useState(null);
+  const [hasProfile, setHasProfile] = useState(false);
+  const [isCounsellor, setIsCounsellor] = useState(false);
+
+  // Load existing user from localStorage (if any) – but we will bypass auth for demo
+  useEffect(() => {
+    const currentUserStr = localStorage.getItem('ankr_current_user');
+    const expiry = localStorage.getItem('ankr_current_user_expiry');
+    if (currentUserStr && expiry && Date.now() > parseInt(expiry)) {
+      localStorage.removeItem('ankr_current_user');
+      localStorage.removeItem('ankr_current_user_expiry');
+      return;
+    }
+    if (currentUserStr && (!expiry || Date.now() <= parseInt(expiry))) {
+      const user = JSON.parse(currentUserStr);
+      const users = JSON.parse(localStorage.getItem('ankr_users') || '[]');
+      const fullUser = users.find(u => u.email === user.email);
+      if (fullUser && fullUser.profileData) {
+        setUserData(fullUser.profileData);
+        setHasProfile(true);
+      } else if (fullUser) {
+        setUserData(null);
+        setHasProfile(false);
+      }
+    }
+  }, []);
+
+  // Direct start – no auth modal
+  const startOnboarding = () => {
+  // Clear any existing user data to ensure a fresh start for each user
+  localStorage.removeItem('ankr_current_user');
+  localStorage.removeItem('ankr_current_user_expiry');
+  localStorage.removeItem('ankr_users'); // optional – removes all users
+  // Create a brand new anonymous user
+  const tempUser = { email: `demo_${Date.now()}@ankr.local` };
+  const expiry = Date.now() + 24 * 60 * 60 * 1000;
+  localStorage.setItem('ankr_current_user', JSON.stringify(tempUser));
+  localStorage.setItem('ankr_current_user_expiry', expiry.toString());
+  setCurrentView('onboarding');
+};
+
+
+  // Complete onboarding – saves profile and moves to app
+  const completeOnboarding = (profileData) => {
+    const currentUser = JSON.parse(localStorage.getItem('ankr_current_user'));
+    if (!currentUser) {
+      // Fallback: create a temporary user if missing
+      const tempUser = { email: `user_${Date.now()}@temp.local` };
+      localStorage.setItem('ankr_current_user', JSON.stringify(tempUser));
+      const fullData = { ...tempUser, ...profileData };
+      setUserData(fullData);
+      setHasProfile(true);
+      const users = JSON.parse(localStorage.getItem('ankr_users') || '[]');
+      const newUser = { email: tempUser.email, profileData: fullData };
+      users.push(newUser);
+      localStorage.setItem('ankr_users', JSON.stringify(users));
+      setCurrentView('app');
+      return;
+    }
+    const fullData = { ...currentUser, ...profileData };
+    setUserData(fullData);
+    setHasProfile(true);
+    const users = JSON.parse(localStorage.getItem('ankr_users') || '[]');
+    const index = users.findIndex(u => u.email === currentUser.email);
+    if (index !== -1) {
+      users[index].profileData = fullData;
+      localStorage.setItem('ankr_users', JSON.stringify(users));
+    } else {
+      users.push({ email: currentUser.email, profileData: fullData });
+      localStorage.setItem('ankr_users', JSON.stringify(users));
+    }
+    setCurrentView('app');
+  };
+
+  const showCounsellor = () => {
+    setIsCounsellor(true);
+    setUserData({ name: 'Counsellor', isCounsellor: true });
+    setCurrentView('app');
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('ankr_current_user');
+    localStorage.removeItem('ankr_current_user_expiry');
+    setUserData(null);
+    setHasProfile(false);
+    setIsCounsellor(false);
+    setCurrentView('landing');
+  };
+
+  const handleNavigateTo = (target) => {
+    if (target === 'app') setCurrentView('app');
+    else if (target === 'privacy') setCurrentView('privacy');
+    else if (target === 'about') setCurrentView('about');
+    else if (target === 'copyright') setCurrentView('copyright');
+  };
+
+  const goBackToLanding = () => setCurrentView('landing');
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+    <ProgrammesProvider>
+      {currentView === 'landing' && (
+        <Landing
+          onStart={startOnboarding}
+          onCounsellorClick={showCounsellor}
+          hasProfile={hasProfile}
+          onNavigateTo={handleNavigateTo}
+        />
+      )}
+      {currentView === 'onboarding' && (
+        <Onboarding onComplete={completeOnboarding} />
+      )}
+      {currentView === 'app' && (
+        <MainApp
+          userData={userData}
+          setUserData={setUserData}
+          initialPage={isCounsellor ? 'dashboard' : 'home'}
+          isCounsellor={isCounsellor}
+          onLogout={handleLogout}
+        />
+      )}
+      {currentView === 'privacy' && <PrivacyPolicy onBack={goBackToLanding} />}
+      {currentView === 'about' && <AboutUs onBack={goBackToLanding} />}
+      {currentView === 'copyright' && <Copyright onBack={goBackToLanding} />}
+    </ProgrammesProvider>
+  );
 }
 
-export default App
+export default App;
